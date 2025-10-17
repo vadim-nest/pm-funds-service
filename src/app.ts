@@ -4,6 +4,7 @@ import { registerErrorHandler } from "./lib/error.js";
 
 import fundsRoutes from "./routes/funds.js";
 import investorsRoutes from "./routes/investors.js";
+import investmentsRoutes from "./routes/investments.js";
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ export function buildApp() {
 
   app.register(fundsRoutes);
   app.register(investorsRoutes);
+  app.register(investmentsRoutes);
 
   return app;
 }
