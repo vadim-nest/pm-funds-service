@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "scripts": {
+    "db:seed": "prisma db seed",
     "db:migrate": "prisma migrate dev -n init",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",

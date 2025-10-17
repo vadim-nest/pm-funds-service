@@ -21,7 +21,7 @@ enum InvestorType {
 
 model Fund {
   id              String   @id @default(uuid())
-  name            String
+  name            String   @unique
   vintage_year    Int
   target_size_usd Decimal  @db.Decimal(20, 2)
   status          FundStatus
