@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import dotenv from "dotenv";
+import { registerErrorHandler } from "./lib/error.js";
 
 dotenv.config();
 
@@ -17,10 +18,12 @@ export function buildApp() {
         },
   });
 
-  // Basic health route
+  // Health
   app.get("/health", async () => ({ status: "ok" }));
 
-  // Placeholders for future route files (we'll register them later)
+  // Error handler
+  registerErrorHandler(app);
+
   // await app.register(import("./routes/funds.js"));
   // await app.register(import("./routes/investors.js"));
   // await app.register(import("./routes/investments.js"));
