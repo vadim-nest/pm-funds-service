@@ -2,8 +2,8 @@ import Fastify from "fastify";
 import dotenv from "dotenv";
 import { registerErrorHandler } from "./lib/error.js";
 
-// ✅ use static imports for route plugins (simpler, safer)
 import fundsRoutes from "./routes/funds.js";
+import investorsRoutes from "./routes/investors.js";
 
 dotenv.config();
 
@@ -27,8 +27,8 @@ export function buildApp() {
   // Error handler
   registerErrorHandler(app);
 
-  // ✅ register routes (no await needed here)
   app.register(fundsRoutes);
+  app.register(investorsRoutes);
 
   return app;
 }
