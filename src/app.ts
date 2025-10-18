@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import dotenv from "dotenv";
 import { registerErrorHandler } from "./lib/error.js";
+import { registerSwagger } from "./plugins/swagger.js";
 
 import fundsRoutes from "./routes/funds.js";
 import investorsRoutes from "./routes/investors.js";
@@ -22,11 +23,10 @@ export function buildApp() {
         },
   });
 
-  // Health
   app.get("/health", async () => ({ status: "ok" }));
 
-  // Error handler
   registerErrorHandler(app);
+  registerSwagger(app);
 
   app.register(fundsRoutes);
   app.register(investorsRoutes);
