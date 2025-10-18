@@ -1,18 +1,14 @@
 import { buildApp } from "./app.js";
 
 const app = buildApp();
-const PORT = Number(process.env.PORT ?? 3000);
-const HOST = process.env.HOST ?? "0.0.0.0";
 
-(async () => {
-  const app = buildApp(); // returns Fastify instance
-  await app.ready(); // ensure all plugins/routes are registered
-
+async function start() {
   try {
-    await app.listen({ port: PORT, host: HOST });
-    app.log.info(`Server listening on http://${HOST}:${PORT}`);
+    await app.listen({ port: Number(process.env.PORT) || 3000, host: "0.0.0.0" });
   } catch (err) {
-    app.log.error(err, "Failed to start server");
+    app.log.error(err);
     process.exit(1);
   }
-})();
+}
+
+void start();

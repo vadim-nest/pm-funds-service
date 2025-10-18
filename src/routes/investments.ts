@@ -8,7 +8,7 @@ import {
   CreateInvestmentForFundSchema,
 } from "../schemas/paths/investments.js";
 
-export default async function investmentsRoutes(app: FastifyInstance) {
+export default function investmentsRoutes(app: FastifyInstance) {
   // GET /funds/:fund_id/investments
   app.get<{ Params: { fund_id: string } }>(
     "/funds/:fund_id/investments",

@@ -1,8 +1,9 @@
 import request from "supertest";
 import { startTestServer, stopTestServer } from "./helpers/server.js";
+import type { FastifyInstance } from "fastify";
 
 let base: string;
-let app: any;
+let app: FastifyInstance | undefined;
 
 beforeAll(async () => {
   app = await startTestServer();
@@ -59,13 +60,11 @@ describe("Investments", () => {
     const funds = await request(base).get("/funds");
     const fundId = funds.body[0].id;
 
-    const res = await request(base)
-      .post(`/funds/${fundId}/investments`)
-      .send({
-        investor_id: "550e8400-e29b-41d4-a716-446655440999",
-        amount_usd: 1,
-        investment_date: "2025-01-01",
-      });
+    const res = await request(base).post(`/funds/${fundId}/investments`).send({
+      investor_id: "550e8400-e29b-41d4-a716-446655440999",
+      amount_usd: 1,
+      investment_date: "2025-01-01",
+    });
     expect(res.status).toBe(404);
   });
 

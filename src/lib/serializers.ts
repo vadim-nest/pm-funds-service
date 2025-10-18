@@ -1,20 +1,21 @@
-import type { Fund, Investor, Investment } from "@prisma/client";
+import type { Fund, Investment, Investor, Prisma } from "@prisma/client";
 
-// Convert Prisma Decimal to JS number safely
-const dec = (v: any): number => (typeof v === "number" ? v : Number(v?.toString?.() ?? v));
+const toNumber = (v: Prisma.Decimal | number | string): number => {
+  if (typeof v === "number") return v;
+  if (typeof v === "string") return Number(v);
+  return v.toNumber(); // Prisma.Decimal
+};
 
-// ISO date-time with Z, date (YYYY-MM-DD)
-const iso = (d: Date) => d.toISOString();
-const ymd = (d: Date) => iso(d).split("T")[0];
+const yyyymmdd = (d: Date): string => d.toISOString().slice(0, 10);
 
 export function serializeFund(row: Fund) {
   return {
     id: row.id,
     name: row.name,
     vintage_year: row.vintage_year,
-    target_size_usd: dec(row.target_size_usd),
-    status: row.status, // 'Fundraising' | 'Investing' | 'Closed'
-    created_at: iso(row.created_at),
+    target_size_usd: toNumber(row.target_size_usd as unknown as Prisma.Decimal | number | string),
+    status: row.status,
+    created_at: row.created_at, // Fastify will JSON-serialize Date → ISO string
   };
 }
 
@@ -22,9 +23,9 @@ export function serializeInvestor(row: Investor) {
   return {
     id: row.id,
     name: row.name,
-    investor_type: row.investor_type === "Family_Office" ? "Family Office" : row.investor_type,
+    investor_type: row.investor_type,
     email: row.email,
-    created_at: iso(row.created_at),
+    created_at: row.created_at,
   };
 }
 
@@ -33,7 +34,8 @@ export function serializeInvestment(row: Investment) {
     id: row.id,
     investor_id: row.investor_id,
     fund_id: row.fund_id,
-    amount_usd: dec(row.amount_usd),
-    investment_date: ymd(row.investment_date),
+    amount_usd: toNumber(row.amount_usd as unknown as Prisma.Decimal | number | string),
+    // Your schema wants YYYY-MM-DD; format it:
+    investment_date: yyyymmdd(row.investment_date),
   };
 }

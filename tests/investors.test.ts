@@ -1,8 +1,9 @@
 import request from "supertest";
 import { startTestServer, stopTestServer } from "./helpers/server.js";
+import type { FastifyInstance } from "fastify";
 
 let base: string;
-let app: any;
+let app: FastifyInstance | undefined;
 
 beforeAll(async () => {
   app = await startTestServer();

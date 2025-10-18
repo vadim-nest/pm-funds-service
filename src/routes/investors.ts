@@ -4,7 +4,7 @@ import { InvestorCreateBody, toPrismaInvestorType } from "../lib/validation.js";
 import { serializeInvestor } from "../lib/serializers.js";
 import { ListInvestorsSchema, CreateInvestorSchema } from "../schemas/paths/investors.js";
 
-export default async function investorsRoutes(app: FastifyInstance) {
+export default function investorsRoutes(app: FastifyInstance) {
   app.get("/investors", { schema: ListInvestorsSchema }, async () => {
     const rows = await prisma.investor.findMany({ orderBy: { created_at: "asc" } });
     return rows.map(serializeInvestor);

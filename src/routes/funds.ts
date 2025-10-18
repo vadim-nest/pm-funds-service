@@ -10,7 +10,7 @@ import {
   UpdateFundSchema,
 } from "../schemas/paths/funds.js";
 
-export default async function fundsRoutes(app: FastifyInstance) {
+export default function fundsRoutes(app: FastifyInstance) {
   // GET /funds
   app.get("/funds", { schema: ListFundsSchema }, async () => {
     const rows = await prisma.fund.findMany({ orderBy: { created_at: "asc" } });

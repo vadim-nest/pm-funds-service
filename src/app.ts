@@ -23,16 +23,15 @@ export function buildApp() {
             options: { colorize: true, translateTime: "HH:MM:ss Z" },
           },
         },
-    // (Optional) To allow examples in request schemas without errors:
-    // ajv: { customOptions: { strict: false } },
   });
 
-  app.get("/health", async () => ({ status: "ok" }));
+  // not async; no await needed
+  app.get("/health", () => ({ status: "ok" }));
 
-  registerErrorHandler(app);
-  registerSwagger(app);
+  // explicitly ignore potential Promise-typed helpers
+  void registerErrorHandler(app);
+  void registerSwagger(app);
 
-  // Register only component schemas (optional if you don't use $ref; harmless to keep)
   app.addSchema(ErrorSchema);
   app.addSchema(FundSchema);
   app.addSchema(InvestorSchema);

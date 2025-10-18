@@ -1,19 +1,22 @@
+// tests/funds.test.ts
 import request from "supertest";
+import type { FastifyInstance } from "fastify";
+import type { AddressInfo } from "node:net";
 import { startTestServer, stopTestServer } from "./helpers/server.js";
 
-let base: string;
+let base = "";
+let app: FastifyInstance | undefined;
 
 describe("Funds", () => {
-  let app: any;
-
   beforeAll(async () => {
     app = await startTestServer();
-    const address = app.server.address();
-    base = `http://127.0.0.1:${typeof address === "object" ? address.port : 0}`;
+    const addr = app.server.address(); // string | AddressInfo | null
+    const port = typeof addr === "object" && addr !== null ? (addr as AddressInfo).port : 0;
+    base = `http://127.0.0.1:${port}`;
   });
 
   afterAll(async () => {
-    if (app) await stopTestServer(app);
+    await stopTestServer(app);
   });
 
   it("GET /funds returns seeded funds", async () => {
@@ -37,11 +40,10 @@ describe("Funds", () => {
   });
 
   it("PUT /funds updates a fund", async () => {
-    // create first
     const created = await request(base)
       .post("/funds")
       .send({ name: "ToUpdate", vintage_year: 2024, target_size_usd: 100, status: "Investing" });
-    const id = created.body.id;
+    const id: string = created.body.id;
 
     const upd = await request(base)
       .put("/funds")
@@ -54,7 +56,8 @@ describe("Funds", () => {
 
   it("GET /funds/:id gets a fund or 404", async () => {
     const list = await request(base).get("/funds");
-    const id = list.body[0].id;
+    const id: string = list.body[0].id;
+
     const ok = await request(base).get(`/funds/${id}`);
     expect(ok.status).toBe(200);
 
