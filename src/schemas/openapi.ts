@@ -1,4 +1,26 @@
+export const ErrorSchema = {
+  $id: "ErrorSchema",
+  type: "object",
+  properties: {
+    error: {
+      type: "object",
+      properties: {
+        type: { type: "string", examples: ["VALIDATION_ERROR", "CONFLICT", "NOT_FOUND"] },
+        message: {
+          type: "string",
+          examples: ["Invalid request", "Resource already exists", "Not found"],
+        },
+        details: { type: "array", items: { type: "object" } }, // optional
+      },
+      required: ["type", "message"],
+    },
+  },
+  required: ["error"],
+} as const;
+
+// ---------- Fund entity (response shape) ----------
 export const FundSchema = {
+  $id: "FundSchema",
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
@@ -9,10 +31,10 @@ export const FundSchema = {
     created_at: { type: "string", format: "date-time" },
   },
   required: ["id", "name", "vintage_year", "target_size_usd", "status", "created_at"],
-  additionalProperties: false,
 } as const;
 
 export const InvestorSchema = {
+  $id: "InvestorSchema",
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
@@ -26,6 +48,7 @@ export const InvestorSchema = {
 } as const;
 
 export const InvestmentSchema = {
+  $id: "InvestmentSchema",
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
@@ -39,6 +62,20 @@ export const InvestmentSchema = {
 } as const;
 
 // Common responses
-export const FundArraySchema = { type: "array", items: FundSchema } as const;
-export const InvestorArraySchema = { type: "array", items: InvestorSchema } as const;
-export const InvestmentArraySchema = { type: "array", items: InvestmentSchema } as const;
+export const FundArraySchema = {
+  $id: "FundArraySchema",
+  type: "array",
+  items: { $ref: "FundSchema#" },
+} as const;
+
+export const InvestorArraySchema = {
+  $id: "InvestorArraySchema",
+  type: "array",
+  items: { $ref: "InvestorSchema#" },
+} as const;
+
+export const InvestmentArraySchema = {
+  $id: "InvestmentArraySchema",
+  type: "array",
+  items: { $ref: "InvestmentSchema#" },
+} as const;

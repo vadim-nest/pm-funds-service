@@ -3,33 +3,20 @@ import { prisma } from "../lib/prisma.js";
 import { FundIdParamAsFund, InvestmentCreateBody } from "../lib/validation.js";
 import { HttpError } from "../lib/error.js";
 import { serializeInvestment } from "../lib/serializers.js";
-import { InvestmentSchema, InvestmentArraySchema } from "../schemas/openapi.js";
+import {
+  ListInvestmentsForFundSchema,
+  CreateInvestmentForFundSchema,
+} from "../schemas/paths/investments.js";
 
 export default async function investmentsRoutes(app: FastifyInstance) {
-  // List all investments for a fund
-  app.get<{
-    Params: { fund_id: string };
-  }>(
+  // GET /funds/:fund_id/investments
+  app.get<{ Params: { fund_id: string } }>(
     "/funds/:fund_id/investments",
-    {
-      schema: {
-        tags: ["Investments"],
-        summary: "List all investments for a fund",
-        params: {
-          type: "object",
-          properties: { fund_id: { type: "string", format: "uuid" } },
-          required: ["fund_id"],
-        },
-        response: {
-          200: InvestmentArraySchema,
-          404: { type: "object", properties: { error: { type: "object" } } },
-        },
-      },
-    },
+    { schema: ListInvestmentsForFundSchema },
     async (req) => {
       const params = FundIdParamAsFund.parse(req.params);
 
-      // Ensure fund exists (404 if not)
+      // Ensure fund exists
       const fund = await prisma.fund.findUnique({ where: { id: params.fund_id } });
       if (!fund) throw new HttpError(404, "NOT_FOUND", "Fund not found");
 
@@ -41,36 +28,10 @@ export default async function investmentsRoutes(app: FastifyInstance) {
     },
   );
 
-  // Create investment for a fund
-  app.post<{
-    Params: { fund_id: string };
-    Body: unknown;
-  }>(
+  // POST /funds/:fund_id/investments
+  app.post<{ Params: { fund_id: string }; Body: unknown }>(
     "/funds/:fund_id/investments",
-    {
-      schema: {
-        tags: ["Investments"],
-        summary: "Create an investment for a fund",
-        params: {
-          type: "object",
-          properties: { fund_id: { type: "string", format: "uuid" } },
-          required: ["fund_id"],
-        },
-        body: {
-          type: "object",
-          properties: {
-            investor_id: { type: "string", format: "uuid" },
-            amount_usd: { type: "number" },
-            investment_date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-          },
-          required: ["investor_id", "amount_usd", "investment_date"],
-        },
-        response: {
-          201: InvestmentSchema,
-          404: { type: "object", properties: { error: { type: "object" } } },
-        },
-      },
-    },
+    { schema: CreateInvestmentForFundSchema },
     async (req, reply) => {
       const params = FundIdParamAsFund.parse(req.params);
       const body = InvestmentCreateBody.parse(req.body);

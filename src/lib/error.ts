@@ -1,69 +1,101 @@
 import type { FastifyInstance, FastifyError } from "fastify";
-import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
+import { ZodError } from "zod";
 
-type ErrorType = "VALIDATION_ERROR" | "NOT_FOUND" | "CONFLICT" | "INTERNAL";
-
-function sendError(
-  reply: any,
-  statusCode: number,
-  type: ErrorType,
-  message: string,
-  details?: unknown,
-) {
-  return reply.status(statusCode).send({
-    error: { type, message, ...(details ? { details } : {}) },
-  });
-}
-
-// Lightweight helpers you can throw from routes if you prefer
 export class HttpError extends Error {
   constructor(
     public statusCode: number,
-    public type: ErrorType,
+    public type: string,
     message: string,
     public details?: unknown,
   ) {
     super(message);
-    this.name = "HttpError";
+    Object.setPrototypeOf(this, HttpError.prototype);
   }
 }
 
+function normalizeDetails(details: unknown): Array<Record<string, unknown>> | undefined {
+  if (details == null) return undefined;
+  const out: Array<Record<string, unknown>> = [];
+
+  if (Array.isArray(details)) {
+    for (const d of details) {
+      if (d && typeof d === "object") out.push(d as Record<string, unknown>);
+      else out.push({ value: d });
+    }
+  } else if (details && typeof details === "object") {
+    out.push(details as Record<string, unknown>);
+  } else {
+    out.push({ value: details });
+  }
+
+  // If we only produced empty objects, treat as undefined
+  const hasSubstance = out.some((o) => Object.keys(o).length > 0);
+  return hasSubstance ? out : undefined;
+}
+
 export function registerErrorHandler(app: FastifyInstance) {
-  app.setErrorHandler((err: FastifyError | ZodError | any, _req, reply) => {
-    // Explicit HttpError from our code
-    if (err instanceof HttpError) {
-      return sendError(reply, err.statusCode, err.type, err.message, err.details);
+  app.setErrorHandler((err: FastifyError | Error, _req, reply) => {
+    // Fastify (Ajv) validation errors -> 400 with details (useful)
+    if ((err as any).validation) {
+      return reply.status(400).send({
+        error: {
+          type: "VALIDATION_ERROR",
+          message: "Request validation failed",
+          details: normalizeDetails((err as any).validation), // array of Ajv errors
+        },
+      });
     }
 
-    // Zod validation
+    // Zod validation -> 400 with details (useful)
     if (err instanceof ZodError) {
-      return sendError(reply, 400, "VALIDATION_ERROR", "Invalid request", err.issues);
+      return reply.status(400).send({
+        error: {
+          type: "VALIDATION_ERROR",
+          message: "Invalid request payload",
+          details: normalizeDetails(err.issues),
+        },
+      });
     }
 
     // Prisma known errors
     if (err instanceof Prisma.PrismaClientKnownRequestError) {
-      // Unique constraint
       if (err.code === "P2002") {
-        return sendError(reply, 409, "CONFLICT", "Unique constraint violated", {
-          target: (err.meta as any)?.target,
+        // Unique constraint -> 409 (no details to avoid leaking internals)
+        return reply.status(409).send({
+          error: {
+            type: "CONFLICT",
+            message: "Resource already exists",
+          },
         });
       }
-      // Record not found
-      if (err.code === "P2025") {
-        return sendError(reply, 404, "NOT_FOUND", "Resource not found");
-      }
+      // Other known prisma error -> 400 generic
+      return reply.status(400).send({
+        error: {
+          type: "PRISMA_ERROR",
+          message: "Database request error",
+        },
+      });
     }
 
-    // If Fastify set a statusCode already (e.g., 404), keep it
-    const status = (err as any).statusCode ?? 500;
-    const type: ErrorType =
-      status === 404 ? "NOT_FOUND" : status === 400 ? "VALIDATION_ERROR" : "INTERNAL";
-    const message =
-      (err as any).message ??
-      (status === 404 ? "Not found" : status === 400 ? "Invalid request" : "Internal Server Error");
+    if (err instanceof HttpError) {
+      return reply.status(err.statusCode).send({
+        error: {
+          type: err.type || "ERROR",
+          message: err.message,
+          // include details only if present & meaningful
+          ...(normalizeDetails(err.details) ? { details: normalizeDetails(err.details) } : {}),
+        },
+      });
+    }
 
-    app.log.error(err);
-    return sendError(reply, status, type, message);
+    // Fallback
+    app.log.error(err, "Unhandled error");
+    return reply.status(500).send({
+      error: {
+        type: "INTERNAL_SERVER_ERROR",
+        message: "Unexpected server error",
+      },
+    });
   });
 }
