@@ -1,58 +1,74 @@
 import type { FastifyInstance, FastifyError } from "fastify";
+import { ZodError } from "zod";
 
 export class HttpError extends Error {
-  statusCode: number;
+  status: number;
   type: string;
   details?: unknown[];
-
-  constructor(statusCode: number, type: string, message: string, details?: unknown[]) {
+  constructor(status: number, type: string, message: string, details?: unknown[]) {
     super(message);
-    this.statusCode = statusCode;
+    this.status = status;
     this.type = type;
     this.details = details;
   }
 }
 
-type AjvValidation = Array<Record<string, unknown>>;
-type FastifyValidationError = FastifyError & {
-  validation?: AjvValidation;
-  validationContext?: string;
-};
-
-const isFastifyValidationError = (e: unknown): e is FastifyValidationError =>
-  typeof e === "object" && e !== null && "validation" in e;
+function zodDetails(err: ZodError) {
+  return err.issues.map((i) => ({
+    origin: i.code,
+    code: i.code,
+    path: i.path,
+    message: i.message,
+    ...(typeof (i as any).minimum !== "undefined" ? { minimum: (i as any).minimum } : {}),
+    ...(typeof (i as any).inclusive !== "undefined" ? { inclusive: (i as any).inclusive } : {}),
+  }));
+}
 
 export function registerErrorHandler(app: FastifyInstance) {
-  app.setErrorHandler((err, _req, reply) => {
-    // Zod/Fastify validation → 400
-    if (isFastifyValidationError(err) && err.validation) {
-      return reply.status(400).send({
+  app.setErrorHandler((err: FastifyError | Error, req, reply) => {
+    // Prisma unique constraint (don’t rely on instanceof; check .code)
+    if ((err as any).code === "P2002") {
+      const meta = (err as any).meta as { target?: string[] } | undefined;
+      return reply.code(409).send({
         error: {
-          type: "VALIDATION_ERROR",
-          message: err.message,
-          details: err.validation,
+          type: "CONFLICT",
+          message: "Unique constraint violation",
+          details: meta?.target ? [{ target: meta.target }] : [],
         },
       });
     }
 
-    // Explicit HttpError
-    if (err instanceof HttpError) {
-      return reply.status(err.statusCode).send({
+    // Zod validation from our own parse() calls
+    if (err instanceof ZodError) {
+      return reply.code(400).send({
         error: {
-          type: err.type,
-          message: err.message,
-          ...(err.details ? { details: err.details } : {}),
+          type: "VALIDATION_ERROR",
+          message: "Invalid request",
+          details: zodDetails(err),
         },
+      });
+    }
+
+    // Fastify/Ajv validation (params/body schema mismatches)
+    if ((err as any).validation) {
+      return reply.code(400).send({
+        error: {
+          type: "VALIDATION_ERROR",
+          message: "Invalid request",
+          details: (err as any).validation,
+        },
+      });
+    }
+
+    // Our explicit app errors
+    if (err instanceof HttpError) {
+      return reply.code(err.status).send({
+        error: { type: err.type, message: err.message, details: err.details ?? [] },
       });
     }
 
     // Fallback
-    app.log.error({ err }, "Unhandled error");
-    return reply.status(500).send({
-      error: {
-        type: "INTERNAL_SERVER_ERROR",
-        message: "Unexpected error",
-      },
-    });
+    req.log.error({ err }, "Unhandled error");
+    return reply.code(500).send({ error: { type: "INTERNAL", message: "Internal server error" } });
   });
 }
