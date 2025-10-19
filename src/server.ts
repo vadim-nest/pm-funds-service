@@ -2,13 +2,15 @@ import { buildApp } from "./app.js";
 
 const app = buildApp();
 
-async function start() {
-  try {
-    await app.listen({ port: Number(process.env.PORT) || 3000, host: "0.0.0.0" });
-  } catch (err) {
-    app.log.error(err);
-    process.exit(1);
-  }
-}
+const port = Number(process.env.PORT ?? 3000);
+const host = process.env.HOST ?? "0.0.0.0";
 
-void start();
+void app
+  .listen({ port, host })
+  .then((addr) => {
+    app.log.info(`Server listening at ${addr}`);
+  })
+  .catch((err) => {
+    app.log.error(err, "Failed to start server");
+    process.exit(1);
+  });

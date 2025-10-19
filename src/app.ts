@@ -1,7 +1,11 @@
 import Fastify from "fastify";
 import dotenv from "dotenv";
+import { randomUUID } from "node:crypto";
+
 import { registerErrorHandler } from "./lib/error.js";
 import { registerSwagger } from "./plugins/swagger.js";
+import { registerSecurity } from "./plugins/security.js";
+import { config } from "./config.js";
 
 import fundsRoutes from "./routes/funds.js";
 import investorsRoutes from "./routes/investors.js";
@@ -12,31 +16,61 @@ import { ErrorSchema, FundSchema, InvestorSchema, InvestmentSchema } from "./sch
 dotenv.config();
 
 export function buildApp() {
-  const isProd = process.env.NODE_ENV === "production";
+  const logger = config.isProd
+    ? {
+        level: "info",
+        redact: {
+          paths: [
+            "req.headers.authorization",
+            'req.headers["x-api-key"]',
+            "req.headers.cookie",
+            'res.headers["set-cookie"]',
+            "env.DATABASE_URL",
+            "env.POSTGRES_PASSWORD",
+          ],
+          remove: true,
+        },
+      }
+    : {
+        transport: {
+          target: "pino-pretty",
+          options: { colorize: true, translateTime: "HH:MM:ss Z" },
+        },
+        redact: {
+          paths: [
+            "req.headers.authorization",
+            'req.headers["x-api-key"]',
+            "req.headers.cookie",
+            'res.headers["set-cookie"]',
+          ],
+          remove: true,
+        },
+      };
 
   const app = Fastify({
-    logger: isProd
-      ? true
-      : {
-          transport: {
-            target: "pino-pretty",
-            options: { colorize: true, translateTime: "HH:MM:ss Z" },
-          },
-        },
+    logger,
+    genReqId: (req) => (req.headers["x-request-id"] as string | undefined) ?? randomUUID(),
   });
 
-  // not async; no await needed
+  app.addHook("onRequest", (req, reply, done) => {
+    reply.header("x-request-id", req.id);
+    done();
+  });
+
   app.get("/health", () => ({ status: "ok" }));
 
-  // explicitly ignore potential Promise-typed helpers
+  // Plugins
+  void registerSecurity(app);
   void registerErrorHandler(app);
   void registerSwagger(app);
 
+  // Component schemas
   app.addSchema(ErrorSchema);
   app.addSchema(FundSchema);
   app.addSchema(InvestorSchema);
   app.addSchema(InvestmentSchema);
 
+  // Routes
   app.register(fundsRoutes);
   app.register(investorsRoutes);
   app.register(investmentsRoutes);

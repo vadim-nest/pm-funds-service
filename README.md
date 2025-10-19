@@ -112,3 +112,15 @@ Tests run against an isolated test database (`.env.test`); the test script reset
 ```bash
 make dev      # or: npm run dev after db up/migrate/seed
 ```
+
+### Security & Ops
+
+- **CORS**: enabled with `origin: true`.
+- **Helmet**: common security headers; CSP disabled to avoid blocking Swagger UI.
+- **Request IDs**: every request has an `x-request-id` (client can send one, otherwise generated).
+- **Logging**: Pino redacts `authorization`, `cookie`, `x-api-key`, and common env secrets from logs.
+- **Rate limit**: global 100 req/min (draft standard headers: `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`).
+  - Configure via env:
+    - `RATE_LIMIT_MAX` (default `100`)
+    - `RATE_LIMIT_WINDOW` (default `"1 minute"`)
+  - Disabled in `NODE_ENV=test`.
