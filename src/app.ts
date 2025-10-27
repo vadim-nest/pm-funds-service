@@ -10,6 +10,7 @@ import { config } from "./config.js";
 import fundsRoutes from "./routes/funds.js";
 import investorsRoutes from "./routes/investors.js";
 import investmentsRoutes from "./routes/investments.js";
+import analyticsRoutes from "./routes/analytics.js";
 
 import { ErrorSchema, FundSchema, InvestorSchema, InvestmentSchema } from "./schemas/openapi.js";
 
@@ -74,6 +75,7 @@ export function buildApp() {
   app.register(fundsRoutes);
   app.register(investorsRoutes);
   app.register(investmentsRoutes);
+  app.register(analyticsRoutes);
 
   return app;
 }
